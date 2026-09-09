@@ -1,0 +1,16 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Database
+*.db
+
+# VS Code
+.vscode/
+
+# Streamlit cache
+.streamlit/
