@@ -3,74 +3,72 @@ import pandas as pd
 import asyncio
 import ast
 
-from client.mcp_client import mcp_client
+from client.mcp_client import call_mcp
 
+
+# ---------------- MCP FUNCTIONS ----------------
 
 async def add_hospital_async(name, location, phone):
-    async with mcp_client:
-        await mcp_client.call_tool(
-            "add_hospital",
-            {
-                "name": name,
-                "location": location,
-                "phone": phone
-            }
-        )
+    await call_mcp(
+        "add_hospital_tool",
+        {
+            "name": name,
+            "location": location,
+            "phone": phone
+        }
+    )
 
 
 async def get_all_hospitals_async():
-    async with mcp_client:
-        result = await mcp_client.call_tool(
-            "get_all_hospitals",
-            {}
-        )
-        return ast.literal_eval(result.content[0].text)
+    result = await call_mcp(
+        "view_hospitals",
+        {}
+    )
+    return ast.literal_eval(result.content[0].text)
 
 
 async def search_hospitals_async(location):
-    async with mcp_client:
-        result = await mcp_client.call_tool(
-            "search_hospitals",
-            {
-                "location": location
-            }
-        )
-        return ast.literal_eval(result.content[0].text)
+    result = await call_mcp(
+        "search_hospital",
+        {
+            "location": location
+        }
+    )
+    return ast.literal_eval(result.content[0].text)
 
 
 async def get_hospital_by_id_async(hospital_id):
-    async with mcp_client:
-        result = await mcp_client.call_tool(
-            "get_hospital_by_id",
-            {
-                "hospital_id": hospital_id
-            }
-        )
-        return ast.literal_eval(result.content[0].text)
+    result = await call_mcp(
+        "hospital_details",
+        {
+            "hospital_id": hospital_id
+        }
+    )
+    return ast.literal_eval(result.content[0].text)
 
 
 async def update_hospital_async(hospital_id, name, location, phone):
-    async with mcp_client:
-        await mcp_client.call_tool(
-            "update_hospital",
-            {
-                "hospital_id": hospital_id,
-                "name": name,
-                "location": location,
-                "phone": phone
-            }
-        )
+    await call_mcp(
+        "edit_hospital",
+        {
+            "hospital_id": hospital_id,
+            "name": name,
+            "location": location,
+            "phone": phone
+        }
+    )
 
 
 async def delete_hospital_async(hospital_id):
-    async with mcp_client:
-        await mcp_client.call_tool(
-            "delete_hospital",
-            {
-                "hospital_id": hospital_id
-            }
-        )
+    await call_mcp(
+        "remove_hospital",
+        {
+            "hospital_id": hospital_id
+        }
+    )
 
+
+# ---------------- STREAMLIT UI ----------------
 
 def show_hospital_management():
 
@@ -91,33 +89,50 @@ def show_hospital_management():
     if st.button("Add Hospital"):
 
         if name and location and phone:
+
             try:
-                asyncio.run(add_hospital_async(name, location, phone))
+                asyncio.run(
+                    add_hospital_async(
+                        name,
+                        location,
+                        phone
+                    )
+                )
+
                 st.success("✅ Hospital Added Successfully!")
                 st.rerun()
+
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"❌ {e}")
+
         else:
             st.warning("Please fill all fields.")
 
     st.divider()
 
-    # ---------------- Search Hospitals ----------------
+    # ---------------- Search ----------------
 
     st.subheader("🔍 Search Hospitals")
 
     search_location = st.text_input("Search by Location")
 
     try:
+
         if st.button("Search Hospitals"):
-            hospitals = asyncio.run(search_hospitals_async(search_location))
+            hospitals = asyncio.run(
+                search_hospitals_async(search_location)
+            )
         else:
-            hospitals = asyncio.run(get_all_hospitals_async())
+            hospitals = asyncio.run(
+                get_all_hospitals_async()
+            )
+
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"❌ {e}")
         hospitals = []
 
     if hospitals:
+
         df = pd.DataFrame(
             hospitals,
             columns=[
@@ -128,14 +143,17 @@ def show_hospital_management():
             ]
         )
 
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(
+            df,
+            use_container_width=True
+        )
 
     else:
         st.warning("No hospitals found.")
 
     st.divider()
 
-    # ---------------- Delete Hospital ----------------
+    # ---------------- Delete ----------------
 
     st.subheader("🗑 Delete Hospital")
 
@@ -143,21 +161,26 @@ def show_hospital_management():
         "Hospital ID",
         min_value=1,
         step=1,
-        key="delete_id"
+        key="delete"
     )
 
     if st.button("Delete Hospital"):
 
         try:
-            asyncio.run(delete_hospital_async(delete_id))
+
+            asyncio.run(
+                delete_hospital_async(delete_id)
+            )
+
             st.success("✅ Hospital Deleted Successfully!")
             st.rerun()
+
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"❌ {e}")
 
     st.divider()
 
-    # ---------------- Edit Hospital ----------------
+    # ---------------- Edit ----------------
 
     st.subheader("✏ Edit Hospital")
 
@@ -165,13 +188,16 @@ def show_hospital_management():
         "Hospital ID to Edit",
         min_value=1,
         step=1,
-        key="edit_id"
+        key="edit"
     )
 
     if st.button("Load Hospital"):
 
         try:
-            hospital = asyncio.run(get_hospital_by_id_async(edit_id))
+
+            hospital = asyncio.run(
+                get_hospital_by_id_async(edit_id)
+            )
 
             if hospital:
                 st.session_state["edit_hospital"] = hospital
@@ -179,7 +205,7 @@ def show_hospital_management():
                 st.error("Hospital not found.")
 
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"❌ {e}")
 
     if "edit_hospital" in st.session_state:
 
@@ -187,25 +213,23 @@ def show_hospital_management():
 
         hospital_name = st.text_input(
             "Hospital Name",
-            value=hospital[1],
-            key="hospital_name"
+            value=hospital[1]
         )
 
         hospital_location = st.text_input(
             "Location",
-            value=hospital[2],
-            key="hospital_location"
+            value=hospital[2]
         )
 
         hospital_phone = st.text_input(
-            "Phone",
-            value=hospital[3],
-            key="hospital_phone"
+            "Phone Number",
+            value=hospital[3]
         )
 
         if st.button("Update Hospital"):
 
             try:
+
                 asyncio.run(
                     update_hospital_async(
                         hospital[0],
@@ -222,4 +246,4 @@ def show_hospital_management():
                 st.rerun()
 
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"❌ {e}")

@@ -3,32 +3,33 @@ import pandas as pd
 import asyncio
 import ast
 
-from client.mcp_client import mcp_client
+from client.mcp_client import call_mcp
 
+
+# ---------------- MCP FUNCTIONS ----------------
 
 async def load_inventory():
-    async with mcp_client:
-        result = await mcp_client.call_tool(
-            "view_inventory",
-            {}
-        )
-        return ast.literal_eval(result.content[0].text)
+    result = await call_mcp(
+        "view_inventory",
+        {}
+    )
+    return ast.literal_eval(result.content[0].text)
 
 
 async def update_units(blood_group, units):
-    async with mcp_client:
-        await mcp_client.call_tool(
-            "update_blood_inventory",
-            {
-                "blood_group": blood_group,
-                "units": units
-            }
-        )
+    await call_mcp(
+        "update_blood_inventory",
+        {
+            "blood_group": blood_group,
+            "units": units
+        }
+    )
 
+
+# ---------------- STREAMLIT UI ----------------
 
 def show_blood_inventory():
 
-    # Back Button
     if st.button("⬅ Back to Home"):
         st.session_state.page = "Home"
         st.rerun()
@@ -37,8 +38,9 @@ def show_blood_inventory():
 
     try:
         inventory = asyncio.run(load_inventory())
+
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"❌ {e}")
         return
 
     if inventory:
@@ -54,11 +56,13 @@ def show_blood_inventory():
             else:
                 status = "🔴 Critical"
 
-            data.append([
-                blood_group,
-                units,
-                status
-            ])
+            data.append(
+                [
+                    blood_group,
+                    units,
+                    status
+                ]
+            )
 
         df = pd.DataFrame(
             data,
@@ -104,9 +108,16 @@ def show_blood_inventory():
     if st.button("Update Inventory"):
 
         try:
-            asyncio.run(update_units(blood_group, units))
-            st.success("✅ Inventory updated successfully!")
+
+            asyncio.run(
+                update_units(
+                    blood_group,
+                    units
+                )
+            )
+
+            st.success("✅ Inventory Updated Successfully!")
             st.rerun()
 
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"❌ {e}")

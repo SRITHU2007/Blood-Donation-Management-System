@@ -12,11 +12,11 @@ def create_tables():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Donors Table
+    # ---------------- Donors ----------------
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS donors (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
+        donor_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
         age INTEGER,
         gender TEXT,
         blood_group TEXT,
@@ -27,15 +27,30 @@ def create_tables():
     )
     """)
 
-    # Blood Inventory Table
+    # ---------------- Blood Inventory ----------------
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS blood_inventory (
         blood_group TEXT PRIMARY KEY,
-        units_available INTEGER
+        units_available INTEGER DEFAULT 0
     )
     """)
 
-    # Hospitals Table
+    # Insert default blood groups
+    blood_groups = [
+        "A+","A-",
+        "B+","B-",
+        "AB+","AB-",
+        "O+","O-"
+    ]
+
+    for group in blood_groups:
+        cursor.execute("""
+        INSERT OR IGNORE INTO blood_inventory
+        (blood_group, units_available)
+        VALUES (?, ?)
+        """, (group, 0))
+
+    # ---------------- Hospitals ----------------
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS hospitals (
         hospital_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,3 +62,8 @@ def create_tables():
 
     conn.commit()
     conn.close()
+
+
+if __name__ == "__main__":
+    create_tables()
+    print("Database created successfully.")

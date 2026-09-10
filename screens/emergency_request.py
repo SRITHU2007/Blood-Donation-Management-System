@@ -2,37 +2,37 @@ import streamlit as st
 import asyncio
 import ast
 
-from client.mcp_client import mcp_client
+from client.mcp_client import call_mcp
 
 
-async def process_emergency_request(required_group, required_units):
-    async with mcp_client:
-        result = await mcp_client.call_tool(
-            "process_request",
-            {
-                "blood_group": required_group,
-                "required_units": required_units
-            }
-        )
+# ---------------- MCP FUNCTIONS ----------------
 
-        return ast.literal_eval(result.content[0].text)
+async def check_blood_availability(blood_group):
+    result = await call_mcp(
+        "blood_availability",
+        {
+            "blood_group": blood_group
+        }
+    )
+
+    return ast.literal_eval(result.content[0].text)
 
 
-async def get_matching_donors_mcp(required_group):
-    async with mcp_client:
-        result = await mcp_client.call_tool(
-            "get_matching_donors",
-            {
-                "blood_group": required_group
-            }
-        )
+async def get_matching_donors_mcp(blood_group):
+    result = await call_mcp(
+        "matching_donors",
+        {
+            "blood_group": blood_group
+        }
+    )
 
-        return ast.literal_eval(result.content[0].text)
+    return ast.literal_eval(result.content[0].text)
 
+
+# ---------------- STREAMLIT ----------------
 
 def show_emergency_request():
 
-    # Back Button
     if st.button("⬅ Back to Home"):
         st.session_state.page = "Home"
         st.rerun()
@@ -41,9 +41,18 @@ def show_emergency_request():
 
     patient_name = st.text_input("Patient Name")
 
-    required_group = st.selectbox(
+    blood_group = st.selectbox(
         "Required Blood Group",
-        ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+        [
+            "A+",
+            "A-",
+            "B+",
+            "B-",
+            "AB+",
+            "AB-",
+            "O+",
+            "O-"
+        ]
     )
 
     required_units = st.number_input(
@@ -55,32 +64,32 @@ def show_emergency_request():
     if st.button("Check Availability"):
 
         try:
-            available, units = asyncio.run(
-                process_emergency_request(
-                    required_group,
-                    required_units
-                )
+
+            available_units = asyncio.run(
+                check_blood_availability(blood_group)
             )
 
-            if available:
+            if available_units >= required_units:
 
                 st.success(
-                    f"✅ Blood Available!\n\n{units} units of {required_group} are available."
+                    f"✅ Blood Available!\n\n"
+                    f"{available_units} units of {blood_group} are available."
                 )
 
             else:
 
                 st.error(
-                    f"❌ Only {units} units of {required_group} are available."
+                    f"❌ Only {available_units} units of {blood_group} are available."
                 )
 
-                st.subheader("Matching Donors")
+                st.subheader("🩸 Matching Donors")
 
                 donors = asyncio.run(
-                    get_matching_donors_mcp(required_group)
+                    get_matching_donors_mcp(blood_group)
                 )
 
                 if donors:
+
                     st.table(donors)
 
                     if st.button("🏥 View Nearby Hospitals"):
@@ -91,4 +100,4 @@ def show_emergency_request():
                     st.warning("No matching donors found.")
 
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"❌ {e}")
